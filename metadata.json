@@ -1,0 +1,8 @@
+{
+  "name": "ويجب للمذاكرة - رفيق القدرات والمدرسة",
+  "description": "تطبيق ويجب الشامل للمذاكرة: تنظيم محاضرات القدرات، إدارة واجبات واختبارات ثاني ثانوي، تقييم اليوم وتتبع سجل الأداء مع نظام المكافآت والتحفيز.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
