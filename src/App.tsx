@@ -927,6 +927,10 @@ export default function App() {
               todayQuantDone={progress.quantDone}
               todayHomeworkDone={homework.filter((h) => h.completed).length}
               todayPoints={totalPoints}
+              lectures={lectures}
+              homework={homework}
+              exams={exams}
+              preps={preps}
             />
 
             {/* Performance Record: سجل الأداء والتقييمات اليومية */}

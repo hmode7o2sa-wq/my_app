@@ -13,6 +13,9 @@ import {
   Tooltip,
   Legend,
   ReferenceLine,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import {
   BarChart3,
@@ -24,14 +27,20 @@ import {
   Calendar,
   Flame,
   Award,
+  PieChart as PieIcon,
 } from 'lucide-react';
 import { generateWeeklyChartData, calculateWeeklyTotals } from '../utils/chartData';
+import { LectureItem, HomeworkItem, ExamItem, PrepItem } from '../types';
 
 interface WeeklyProgressChartsProps {
   todayVerbalDone: number;
   todayQuantDone: number;
   todayHomeworkDone: number;
   todayPoints: number;
+  lectures?: LectureItem[];
+  homework?: HomeworkItem[];
+  exams?: ExamItem[];
+  preps?: PrepItem[];
 }
 
 export const WeeklyProgressCharts: React.FC<WeeklyProgressChartsProps> = ({
@@ -39,8 +48,12 @@ export const WeeklyProgressCharts: React.FC<WeeklyProgressChartsProps> = ({
   todayQuantDone,
   todayHomeworkDone,
   todayPoints,
+  lectures = [],
+  homework = [],
+  exams = [],
+  preps = [],
 }) => {
-  const [activeChartType, setActiveChartType] = useState<'lectures_and_hw' | 'points_trend'>('lectures_and_hw');
+  const [activeChartType, setActiveChartType] = useState<'lectures_and_hw' | 'points_trend' | 'task_distribution'>('lectures_and_hw');
 
   const chartData = generateWeeklyChartData(
     todayVerbalDone,
@@ -51,7 +64,26 @@ export const WeeklyProgressCharts: React.FC<WeeklyProgressChartsProps> = ({
 
   const totals = calculateWeeklyTotals(chartData);
 
-  // Custom RTL Tooltip for Recharts
+  // Calculate task distribution for Pie Chart (completed vs pending across 3 categories)
+  const quduratCompleted = lectures.filter((l) => l.completed).length;
+  const quduratPending = lectures.filter((l) => !l.completed).length;
+
+  const homeworkCompleted = homework.filter((h) => h.completed).length + exams.filter((e) => e.completed).length;
+  const homeworkPending = homework.filter((h) => !h.completed).length + exams.filter((e) => !e.completed).length;
+
+  const prepsCompleted = preps.filter((p) => p.completed).length;
+  const prepsPending = preps.filter((p) => !p.completed).length;
+
+  const taskDistributionData = [
+    { name: 'قدرات (منجزة)', value: quduratCompleted, color: '#4f46e5' },
+    { name: 'قدرات (متأخرة/متبقية)', value: quduratPending, color: '#818cf8' },
+    { name: 'واجبات واختبارات (منجزة)', value: homeworkCompleted, color: '#10b981' },
+    { name: 'واجبات واختبارات (متأخرة/متبقية)', value: homeworkPending, color: '#6ee7b7' },
+    { name: 'استعدادات (منجزة)', value: prepsCompleted, color: '#f59e0b' },
+    { name: 'استعدادات (متأخرة/متبقية)', value: prepsPending, color: '#fcd34d' },
+  ].filter(item => item.value >= 0);
+
+  // Custom RTL Tooltip for Bar/Area Charts
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -100,10 +132,10 @@ export const WeeklyProgressCharts: React.FC<WeeklyProgressChartsProps> = ({
         </div>
 
         {/* View Switcher Controls */}
-        <div className="flex items-center gap-2 p-1 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 p-1 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15 shrink-0">
           <button
             onClick={() => setActiveChartType('lectures_and_hw')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
               activeChartType === 'lectures_and_hw'
                 ? 'bg-amber-400 text-slate-950 shadow-md font-black'
                 : 'text-slate-300 hover:text-white'
@@ -114,14 +146,25 @@ export const WeeklyProgressCharts: React.FC<WeeklyProgressChartsProps> = ({
           </button>
           <button
             onClick={() => setActiveChartType('points_trend')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
               activeChartType === 'points_trend'
                 ? 'bg-amber-400 text-slate-950 shadow-md font-black'
                 : 'text-slate-300 hover:text-white'
             }`}
           >
             <TrendingUp className="w-4 h-4" />
-            <span>منحنى النقاط اليومية</span>
+            <span>منحنى النقاط</span>
+          </button>
+          <button
+            onClick={() => setActiveChartType('task_distribution')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeChartType === 'task_distribution'
+                ? 'bg-amber-400 text-slate-950 shadow-md font-black'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            <PieIcon className="w-4 h-4" />
+            <span>توزيع المهام (دائري)</span>
           </button>
         </div>
       </div>
@@ -198,18 +241,22 @@ export const WeeklyProgressCharts: React.FC<WeeklyProgressChartsProps> = ({
               <span>
                 {activeChartType === 'lectures_and_hw'
                   ? 'مقارنة إنجاز المحاضرات اليومية (لفظي وكمي) والواجبات على مدار الأسبوع'
-                  : 'منحنى النقاط الدراسية المكتسبة يومياً خلال الأسبوع'}
+                  : activeChartType === 'points_trend'
+                  ? 'منحنى النقاط الدراسية المكتسبة يومياً خلال الأسبوع'
+                  : 'توزيع المهام المنجزة مقابل المهام المتأخرة عبر تصنيفاتها الثلاثة (قدرات، واجبات، استعدادات)'}
               </span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {activeChartType === 'lectures_and_hw'
                 ? 'الهدف اليومي: 5 محاضرات لفظي + درس كمي كامل = 6 مهام قدرات يومياً'
-                : 'تراكم النقاط يساعدك على استبدال المكافآت المخصصة في الكافيه'}
+                : activeChartType === 'points_trend'
+                ? 'تراكم النقاط يساعدك على استبدال المكافآت المخصصة في الكافيه'
+                : 'رسم بياني دائري يوضح نسبة المهام المنجزة مقابل المتأخرة لكل من القدرات، الواجبات والاختبارات، والاستعدادات'}
             </p>
           </div>
 
           <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-xl self-start sm:self-auto">
-            أيام الأسبوع (السبت - الجمعة)
+            {activeChartType === 'task_distribution' ? 'تصنيفات النظام الثلاثة' : 'أيام الأسبوع (السبت - الجمعة)'}
           </span>
         </div>
 
@@ -281,7 +328,7 @@ export const WeeklyProgressCharts: React.FC<WeeklyProgressChartsProps> = ({
                   maxBarSize={28}
                 />
               </BarChart>
-            ) : (
+            ) : activeChartType === 'points_trend' ? (
               <AreaChart
                 data={chartData}
                 margin={{ top: 20, right: 15, left: -10, bottom: 10 }}
@@ -321,6 +368,46 @@ export const WeeklyProgressCharts: React.FC<WeeklyProgressChartsProps> = ({
                   activeDot={{ r: 7 }}
                 />
               </AreaChart>
+            ) : (
+              <PieChart>
+                <Tooltip
+                  content={({ active, payload }: any) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0];
+                      return (
+                        <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700 p-3 rounded-2xl shadow-xl text-white text-xs space-y-1 text-right dir-rtl min-w-[180px]">
+                          <p className="font-bold text-amber-400 border-b border-slate-700 pb-1">
+                            {data.name}
+                          </p>
+                          <p className="text-slate-200 font-extrabold text-sm pt-1">
+                            العدد: {data.value} مهمة
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{ paddingTop: 15, fontSize: 12, fontWeight: 700 }}
+                  formatter={(value) => <span className="text-slate-700 dark:text-slate-300">{value}</span>}
+                />
+                <Pie
+                  data={taskDistributionData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={110}
+                  innerRadius={55}
+                  paddingAngle={5}
+                  label={({ name, percent }: any) => `${name.split(' ')[0]}: ${(percent * 100).toFixed(0)}%`}
+                >
+                  {taskDistributionData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+              </PieChart>
             )}
           </ResponsiveContainer>
         </div>
@@ -328,3 +415,4 @@ export const WeeklyProgressCharts: React.FC<WeeklyProgressChartsProps> = ({
     </div>
   );
 };
+
